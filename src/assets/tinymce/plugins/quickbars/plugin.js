@@ -4,7 +4,7 @@
  * For LGPL see License.txt in the project root for license information.
  * For commercial licenses see https://www.tiny.cloud/
  *
- * Version: 5.7.1 (2021-03-17)
+ * Version: 5.5.0 (2020-09-29)
  */
 (function () {
     'use strict';
@@ -280,13 +280,7 @@
     var isFunction = isSimpleType('function');
 
     function ClosestOrAncestor (is, ancestor, scope, a, isRoot) {
-      if (is(scope, a)) {
-        return Optional.some(scope);
-      } else if (isFunction(isRoot) && isRoot(scope)) {
-        return Optional.none();
-      } else {
-        return ancestor(scope, a, isRoot);
-      }
+      return is(scope, a) ? Optional.some(scope) : isFunction(isRoot) && isRoot(scope) ? Optional.none() : ancestor(scope, a, isRoot);
     }
 
     var ELEMENT = 1;
@@ -439,7 +433,9 @@
               return closest(sugarNode, function (elem) {
                 return name(elem) in textBlockElementsMap && editor.dom.isEmpty(elem.dom);
               }, isRoot).isSome();
-            }, never);
+            }, function () {
+              return false;
+            });
           },
           items: insertToolbarItems,
           position: 'line',

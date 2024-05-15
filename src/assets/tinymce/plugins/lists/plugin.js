@@ -4,7 +4,7 @@
  * For LGPL see License.txt in the project root for license information.
  * For commercial licenses see https://www.tiny.cloud/
  *
- * Version: 5.7.1 (2021-03-17)
+ * Version: 5.5.0 (2020-09-29)
  */
 (function () {
     'use strict';
@@ -248,14 +248,11 @@
       r.reverse();
       return r;
     };
-    var get = function (xs, i) {
-      return i >= 0 && i < xs.length ? Optional.some(xs[i]) : Optional.none();
-    };
     var head = function (xs) {
-      return get(xs, 0);
+      return xs.length === 0 ? Optional.none() : Optional.some(xs[0]);
     };
     var last = function (xs) {
-      return get(xs, xs.length - 1);
+      return xs.length === 0 ? Optional.none() : Optional.some(xs[xs.length - 1]);
     };
 
     var __assign = function () {
@@ -270,14 +267,6 @@
       };
       return __assign.apply(this, arguments);
     };
-    function __spreadArrays() {
-      for (var s = 0, i = 0, il = arguments.length; i < il; i++)
-        s += arguments[i].length;
-      for (var r = Array(s), k = 0, i = 0; i < il; i++)
-        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-          r[k] = a[j];
-      return r;
-    }
 
     var cached = function (f) {
       var called = false;
@@ -1466,7 +1455,7 @@
       return bookmark;
     };
     var resolveBookmark = function (bookmark) {
-      var restoreEndPoint = function (start) {
+      function restoreEndPoint(start) {
         var container, offset, node;
         var nodeIndex = function (container) {
           var node = container.parentNode.firstChild, idx = 0;
@@ -1496,7 +1485,7 @@
         }
         bookmark[start ? 'startContainer' : 'endContainer'] = container;
         bookmark[start ? 'startOffset' : 'endOffset'] = offset;
-      };
+      }
       restoreEndPoint(true);
       restoreEndPoint();
       var rng = DOM$1.createRng();
@@ -1608,7 +1597,7 @@
         }
         var nextSibling = node.nextSibling;
         if (global$7.isBookmarkNode(node)) {
-          if (isListNode(nextSibling) || isTextBlock(editor, nextSibling) || !nextSibling && node.parentNode === root) {
+          if (isTextBlock(editor, nextSibling) || !nextSibling && node.parentNode === root) {
             block = null;
             return;
           }
@@ -1644,37 +1633,33 @@
         listItemName = 'DT';
       }
       var bookmark = createBookmark(rng);
-      var selectedTextBlocks = getSelectedTextBlocks(editor, rng, root);
-      global$5.each(selectedTextBlocks, function (block) {
+      global$5.each(getSelectedTextBlocks(editor, rng, root), function (block) {
         var listBlock;
         var sibling = block.previousSibling;
-        var parent = block.parentNode;
-        if (!isListItemNode(parent)) {
-          if (sibling && isListNode(sibling) && sibling.nodeName === listName && hasCompatibleStyle(dom, sibling, detail)) {
-            listBlock = sibling;
-            block = dom.rename(block, listItemName);
-            sibling.appendChild(block);
-          } else {
-            listBlock = dom.create(listName);
-            block.parentNode.insertBefore(listBlock, block);
-            listBlock.appendChild(block);
-            block = dom.rename(block, listItemName);
-          }
-          removeStyles(dom, block, [
-            'margin',
-            'margin-right',
-            'margin-bottom',
-            'margin-left',
-            'margin-top',
-            'padding',
-            'padding-right',
-            'padding-bottom',
-            'padding-left',
-            'padding-top'
-          ]);
-          updateListWithDetails(dom, listBlock, detail);
-          mergeWithAdjacentLists(editor.dom, listBlock);
+        if (sibling && isListNode(sibling) && sibling.nodeName === listName && hasCompatibleStyle(dom, sibling, detail)) {
+          listBlock = sibling;
+          block = dom.rename(block, listItemName);
+          sibling.appendChild(block);
+        } else {
+          listBlock = dom.create(listName);
+          block.parentNode.insertBefore(listBlock, block);
+          listBlock.appendChild(block);
+          block = dom.rename(block, listItemName);
         }
+        removeStyles(dom, block, [
+          'margin',
+          'margin-right',
+          'margin-bottom',
+          'margin-left',
+          'margin-top',
+          'padding',
+          'padding-right',
+          'padding-bottom',
+          'padding-left',
+          'padding-top'
+        ]);
+        updateListWithDetails(dom, listBlock, detail);
+        mergeWithAdjacentLists(editor.dom, listBlock);
       });
       editor.selection.setRng(resolveBookmark(bookmark));
     };
@@ -1720,14 +1705,11 @@
       }
     };
     var toggleMultipleLists = function (editor, parentList, lists, listName, detail) {
-      var parentIsList = isListNode(parentList);
-      if (parentIsList && parentList.nodeName === listName && !hasListStyleDetail(detail)) {
+      if (parentList.nodeName === listName && !hasListStyleDetail(detail)) {
         flattenListSelection(editor);
       } else {
-        applyList(editor, listName, detail);
         var bookmark = createBookmark(editor.selection.getRng(true));
-        var allLists = parentIsList ? __spreadArrays([parentList], lists) : lists;
-        global$5.each(allLists, function (elm) {
+        global$5.each([parentList].concat(lists), function (elm) {
           updateList(editor, elm, listName, detail);
         });
         editor.selection.setRng(resolveBookmark(bookmark));
@@ -1749,7 +1731,6 @@
           var newList = editor.dom.rename(parentList, listName);
           mergeWithAdjacentLists(editor.dom, newList);
           editor.selection.setRng(resolveBookmark(bookmark));
-          applyList(editor, listName, detail);
           fireListEvent(editor, listToggleActionFromListName(listName), newList);
         }
       } else {
@@ -1761,7 +1742,7 @@
       var parentList = getParentList(editor);
       var selectedSubLists = getSelectedSubLists(editor);
       detail = detail ? detail : {};
-      if (selectedSubLists.length > 0) {
+      if (parentList && selectedSubLists.length > 0) {
         toggleMultipleLists(editor, parentList, selectedSubLists, listName, detail);
       } else {
         toggleSingleList(editor, parentList, listName, detail);
@@ -1880,7 +1861,7 @@
     var mergeIntoEmptyLi = function (editor, fromLi, toLi) {
       editor.dom.$(toLi).empty();
       mergeLiElements(editor.dom, fromLi, toLi);
-      editor.selection.setCursorLocation(toLi, 0);
+      editor.selection.setCursorLocation(toLi);
     };
     var mergeForward = function (editor, rng, fromLi, toLi) {
       var dom = editor.dom;
@@ -1994,7 +1975,7 @@
       });
     };
 
-    var get$1 = function (editor) {
+    var get = function (editor) {
       return {
         backspaceDelete: function (isForward) {
           backspaceDelete(editor, isForward);
@@ -2155,7 +2136,7 @@
         }
         register$1(editor);
         register$2(editor);
-        return get$1(editor);
+        return get(editor);
       });
     }
 
